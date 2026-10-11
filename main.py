@@ -31,6 +31,16 @@ from merlion.models.anomaly.isolation_forest import IsolationForest, IsolationFo
 # 動的しきい値（直近の急変重視）モデルのインポートを追加
 from merlion.models.anomaly.stat_threshold import StatThreshold, StatThresholdConfig
 
+# バースト検出（ウィンドウ統計型）モデルのインポートを追加
+#from merlion.models.anomaly.windower import Windower,WindowerConfig
+# ✖ エラーになった既存の行を削除
+# from merlion.models.anomaly.windower import Windower, WindowerConfig
+
+# ⭕ 以下に書き換え
+#from merlion.models.anomaly.spectral_anomaly import SpectralAnomalies, SpectralAnomaliesConfig
+
+from merlion.post_process.threshold import AggregateAlarms
+
 
 # OS自動判定による日本語文字化け対策
 matplotlib.use("Agg")
@@ -575,6 +585,7 @@ async def plot_anomaly(
                 time_series = TimeSeries.from_pd(merlion_df)
                 
                 # 指定された値に応じてモデルを選択
+                """
                 if logic == "isolation_forest":
                     config = IsolationForestConfig()
                     model = IsolationForest(config)
@@ -583,7 +594,53 @@ async def plot_anomaly(
                     config = StatThresholdConfig(alpha=4.0)
                     model = StatThreshold(config)
                     title_prefix = "【異常検知: 直近急変重視】"
+                """
                 
+
+            # ─── 🧠 Merlion による異常検知処理 ───
+            # 💡 【バースト重視のデータ前処理】
+            # 選択されたロジックが「バースト検出」の場合、あらかじめ直近10分間（2サンプル分）の移動平均を計算して突発トゲを除去
+
+            """
+            異常検知モード
+
+            1. 直近の急変重視 (StatThreshold)
+                	• 一瞬のトラフィック急増（突発スパイク、DDoSの初期兆候など）を敏感に捉えます。
+            2. 連続バースト重視 (Pandas Rolling + Isolation Forest)
+                	• 短時間のトゲを無視し、大容量データの流出や長時間のバックアップなど「高負荷が持続している塊」を狙い撃ちで捉えます。
+            3. 総合的な外れ値重視 (Isolation Forest)
+                	• 指定期間全体の中で、絶対的な通信量が最も高くなっているピークポイントを捉えます。
+            """
+
+            if logic == "burst_detector":
+                df_filtered["bps_for_ai"] = df_filtered["bps_A"].rolling(window=2, min_periods=1).mean()
+                title_prefix = "【異常検知: 連続バースト重視】"
+            else:
+                df_filtered["bps_for_ai"] = df_filtered["bps_A"]
+                if logic == "isolation_forest":
+                    title_prefix = "【異常検知: 総合外れ値】"
+                else:
+                    title_prefix = "【異常検知: 直近急変重視】"
+
+            merlion_df = df_filtered[["日時", "bps_for_ai"]].set_index("日時")
+
+            if len(merlion_df) > 2:
+                time_series = TimeSeries.from_pd(merlion_df)
+                
+                # 💡 インポートエラーを防ぐため、既に確実に動くことが実証されている2大モデルを再利用
+                if logic == "isolation_forest":
+                    config = IsolationForestConfig()
+                    model = IsolationForest(config)
+                elif logic == "burst_detector":
+                    # バースト検出時も、移動平均データに対して IsolationForest を適用（塊を捉えるのが得意）
+                    config = IsolationForestConfig()
+                    model = IsolationForest(config)
+                else:
+                    # stat_threshold (直近の急変重視)
+                    config = StatThresholdConfig(alpha=4.0)
+                    model = StatThreshold(config)
+                
+                # 計算を実行
                 anom_scores = await run_in_threadpool(model.train, time_series)
                 anom_scores_df = anom_scores.to_pd()
 
@@ -593,7 +650,9 @@ async def plot_anomaly(
                 df_filtered = df_filtered.merge(scores_map, left_on="日時", right_index=True, how="left")
                 df_filtered["score"] = df_filtered["score"].fillna(0)
                 
-                threshold = df_filtered["score"].quantile(0.98)
+                # バースト検出時は、継続的な負荷に対してスコアが集中するため、上位3%を赤くプロット
+                percentile_val = 0.97 if logic == "burst_detector" else 0.98
+                threshold = df_filtered["score"].quantile(percentile_val)
                 anomalies = df_filtered[df_filtered["score"] >= threshold]
 
                 if not anomalies.empty:
@@ -601,6 +660,8 @@ async def plot_anomaly(
             else:
                 print("[情報] 異常検知を行うための十分なデータ数がありません。")
                 title_prefix = "【異常検知】"
+
+
 
             # X軸の目盛りマッピング
             ax.set_xlim(0, len(df_filtered) - 1)

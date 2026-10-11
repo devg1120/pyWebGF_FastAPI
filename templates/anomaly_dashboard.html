@@ -42,9 +42,9 @@
 <label>検知ロジック:</label>
 <select name="logic" style="padding: 8px; margin-right: 20px; border-radius: 4px; border: 1px solid #ccc;">
     <option value="stat_threshold" {% if selected_logic == 'stat_threshold' %}selected{% endif %}>直近の急変重視 (StatThreshold)</option>
+    <option value="burst_detector" {% if selected_logic == 'burst_detector' %}selected{% endif %}>連続バースト重視 (Windower)</option> <!-- 💡 追加 -->
     <option value="isolation_forest" {% if selected_logic == 'isolation_forest' %}selected{% endif %}>総合的な外れ値重視 (Isolation Forest)</option>
 </select>
-
 
             <input type="submit" value="🔍 異常値を検出して一括描画">
         </form>
