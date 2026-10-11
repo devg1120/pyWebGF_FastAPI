@@ -26,7 +26,7 @@
         
         /* 💡 左サイド：目次リストも画面上部（ヘッダーのすぐ下）に追従してきれいに固定されるように配置 */
         .sidebar { width: 280px; min-width: 280px; position: sticky; top: 310px; max-height: calc(100vh - 330px); overflow-y: auto; background: #fafafa; border: 1px solid #ddd; padding: 10px; border-radius: 4px; }
-        .main-content { flex-grow: 1; }
+        .main-content {  flex-grow: 1; }
 
         .grid-1 { display: grid; grid-template-columns: 1fr; gap: 15px; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -44,14 +44,30 @@
     <!-- 💡 タイトルから絞り込み窓までをすべてこの固定ヘッダー枠に入れる -->
     <div class="sticky-header">
         <h5>📊 SNMP トラフィックモニター (5分間隔差分)</h5>
+
+<!-- 💡 ;異常検知ダッシュボードへの移動リンクを追加 -->
+<!--
+<div style="margin-bottom: 20px; background-color: #ffe6e6; padding: 10px; border-radius: 5px; border: 1px solid #ffb3b3;">
+    <span style="font-weight: bold; color: #b30000;">🧠 新機能：</span>
+    <a href="/anomaly_dashboard?switch={{ selected_switch }}&start_dd={{ selected_start_dd or '2026-10-01' }}&end_dd={{ selected_end_dd or '2026-10-07' }}" 
+       style="color: #b30000; font-weight: bold; text-decoration: underline;">
+        Merlion 異常検知トラフィックモニター画面へ移動する →
+    </a>
+</div>
+-->
         
         <div style="margin-bottom: 15px;">
             <a href="/dashboard" style="text-decoration: none; font-weight: bold; color: #0066cc;">📊 登録済みのダッシュボードを見る</a>
+    <a href="/anomaly_dashboard?switch={{ selected_switch }}&start_dd={{ selected_start_dd or '' }}&end_dd={{ selected_end_dd or '' }}" 
+       style="color: #b30000; font-weight: bold; text-decoration: underline;">
+        Merlion 異常検知トラフィックモニター画面へ移動する →
+    </a>
         </div>
 
         <!-- モード切り替えタブ -->
         <div class="mode-tab">
             <a href="/?mode=single&yyyymm={{ selected_yyyymm }}&dd={{ selected_dd }}&switch={{ selected_switch }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}" {% if current_mode == 'single' %}class="active"{% endif %}>[-] single 通常モード（日を選択）</a>
+	    A
             <a href="/?mode=range&yyyymm={{ selected_yyyymm }}&dd={{ selected_dd }}&switch={{ selected_switch }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}&start_dd={{ selected_start_dd or '2026-06-01' }}&end_dd={{ selected_end_dd or '2026-06-01' }}" {% if current_mode == 'range' %}class="active"{% endif %}>[-] range 期間指定モード</a>
         </div>
 
