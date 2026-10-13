@@ -16,6 +16,7 @@ from natsort import natsorted
 from fastapi import FastAPI, Request, Form, status
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from socket import gethostname
 
 # Merlion 関連のインポート
 from merlion.utils import TimeSeries
@@ -44,7 +45,8 @@ print("HOSTNAME:", os.uname()[1])
 templates = Jinja2Templates(directory="templates")
 BASE_DIR = "./gen_csv/month_data_build/test"
 
-if os.uname()[1] == "mokka21":
+#if os.uname()[1] == "mokka21":
+if gethostname() == "mokka21":
    BASE_DIR = "/sclog/tmp/_snmp/data"
 
 
