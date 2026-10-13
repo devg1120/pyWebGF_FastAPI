@@ -39,8 +39,8 @@ matplotlib.rcParams["axes.unicode_minus"] = False
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
-#BASE_DIR = "./gen_csv/month_data_build/test"
-BASE_DIR = "/sclog/tmp/_snmp/data"
+BASE_DIR = "./gen_csv/month_data_build/test"
+#BASE_DIR = "/sclog/tmp/_snmp/data"
 DASHBOARD_REGISTRY = []
 
 # 共通ディレクトリツリー取得
