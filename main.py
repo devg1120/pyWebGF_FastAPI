@@ -40,7 +40,7 @@ matplotlib.rcParams["axes.unicode_minus"] = False
 
 app = FastAPI()
 
-print("HOSTNAME:", os.uname()[1])
+print("HOSTNAME:", gethostname())
 
 templates = Jinja2Templates(directory="templates")
 BASE_DIR = "./gen_csv/month_data_build/test"
