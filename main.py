@@ -38,9 +38,18 @@ else:
 matplotlib.rcParams["axes.unicode_minus"] = False
 
 app = FastAPI()
+
+print("HOSTNAME:", os.uname()[1])
+
 templates = Jinja2Templates(directory="templates")
 BASE_DIR = "./gen_csv/month_data_build/test"
-#BASE_DIR = "/sclog/tmp/_snmp/data"
+
+if os.uname()[1] == "mokka21":
+   BASE_DIR = "/sclog/tmp/_snmp/data"
+
+
+print("BASE_DIR:", BASE_DIR)
+
 DASHBOARD_REGISTRY = []
 
 # 共通ディレクトリツリー取得
