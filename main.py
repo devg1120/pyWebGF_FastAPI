@@ -187,12 +187,36 @@ async def plot_graph(
         elif len(df.columns) >= 3:
             df.columns = ["日時", "項目A", "項目B"] + list(df.columns[3:])
 
+        #df["日時"] = pd.to_datetime(df["日時"], format="mixed", errors='coerce')
+        #df = df.dropna(subset=["日時"]).sort_values("日時").reset_index(drop=True)
+        #df["差分A"] = df["項目A"].diff().clip(lower=0)
+        #df["差分B"] = df["項目B"].diff().clip(lower=0) if "項目B" in df.columns else 0
+        #df["bps_A"] = (df["差分A"] * 8) / 300
+        #df["bps_B"] = (df["差分B"] * 8) / 300
+
         df["日時"] = pd.to_datetime(df["日時"], format="mixed", errors='coerce')
         df = df.dropna(subset=["日時"]).sort_values("日時").reset_index(drop=True)
+
+        # ─── ✨【追加】欠損によるグラフの跳ね返り防止ガード ───
+        # 前の行との時間差（秒）を計算します
+        time_diff_sec = df["日時"].diff().dt.total_seconds()
+        # 5分（300秒）を大幅に超える（許容誤差を含めて330秒以上）場合は欠損とみなすフラグ
+        is_missing = time_diff_sec > 330
+        # ─────────────────────────────────────────────────────
+
+        # 🚨 修正：時間空きがある場合は diff() を計算せず NaN にする
         df["差分A"] = df["項目A"].diff().clip(lower=0)
-        df["差分B"] = df["項目B"].diff().clip(lower=0) if "項目B" in df.columns else 0
+        df.loc[is_missing, "差分A"] = None  # 時間が空いた箇所のデータを無効化
+
         df["bps_A"] = (df["差分A"] * 8) / 300
-        df["bps_B"] = (df["差分B"] * 8) / 300
+
+        if "項目B" in df.columns:
+            df["差分B"] = df["項目B"].diff().clip(lower=0)
+            df.loc[is_missing, "差分B"] = None  # 時間が空いた箇所のデータを無効化
+            df["bps_B"] = (df["差分B"] * 8) / 300
+        else:
+            df["bps_B"] = 0
+
 
         df_filtered = df[(df["日時"] >= start_time) & (df["日時"] <= end_time)]
         fig.set_facecolor("#f0f0f0")
@@ -385,12 +409,29 @@ async def plot_anomaly(
         elif len(df.columns) >= 3:
             df.columns = ["日時", "項目A", "項目B"] + list(df.columns[3:])
 
+        #df["日時"] = pd.to_datetime(df["日時"], format="mixed", errors='coerce')
+        #df = df.dropna(subset=["日時"])
+        #df = df[(df["日時"] >= start_time) & (df["日時"] <= end_time)]
+        #df = df.sort_values("日時").reset_index(drop=True)
+
+        #df["差分A"] = df["項目A"].diff().clip(lower=0)
+        #df["bps_A"] = (df["差分A"] * 8) / 300
+        #df = df.dropna(subset=["bps_A"]).reset_index(drop=True)
+
         df["日時"] = pd.to_datetime(df["日時"], format="mixed", errors='coerce')
         df = df.dropna(subset=["日時"])
         df = df[(df["日時"] >= start_time) & (df["日時"] <= end_time)]
         df = df.sort_values("日時").reset_index(drop=True)
 
+        # ─── ✨【追加】欠損によるグラフの跳ね返り防止ガード ───
+        time_diff_sec = df["日時"].diff().dt.total_seconds()
+        is_missing = time_diff_sec > 330
+        # ─────────────────────────────────────────────────────
+
+        # 🚨 修正：時間空きがある場合は diff() を計算せず NaN にする
         df["差分A"] = df["項目A"].diff().clip(lower=0)
+        df.loc[is_missing, "差分A"] = None  # 時間が空いた箇所のデータを無効化
+
         df["bps_A"] = (df["差分A"] * 8) / 300
         df = df.dropna(subset=["bps_A"]).reset_index(drop=True)
 
