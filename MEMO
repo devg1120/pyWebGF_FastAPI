@@ -18,3 +18,7 @@ pip install "salesforce-merlion[anomaly]"
 
 python3.10 main.py
 
+sudo yum install -y vlgothic-fonts ipa-gothic-fonts ipa-pgothic-fonts
+rm -rf ~/.cache/matplotlib
+
+

@@ -28,15 +28,24 @@ from merlion.post_process.threshold import AggregateAlarms
 
 
 # OS自動判定による日本語文字化け対策
+
 matplotlib.use("Agg")
 current_os = platform.system()
 if current_os == "Windows":
     matplotlib.rcParams["font.family"] = "Yu Gothic"
 elif current_os == "Linux":
-    matplotlib.rcParams["font.family"] = "IPAexGothic"
+    #matplotlib.rcParams["font.family"] = "IPAexGothic"
+    # CentOS 7でyumインストールされたフォント名を左から優先的に探します
+    matplotlib.rcParams["font.family"] = ["VL Gothic", "IPAGothic", "IPAPGothic", "sans-serif"]
+
 else:
     matplotlib.rcParams["font.family"] = "sans-serif"
 matplotlib.rcParams["axes.unicode_minus"] = False
+
+
+
+
+
 
 app = FastAPI()
 
@@ -215,8 +224,8 @@ async def plot_graph(
             ax.get_yaxis().set_major_formatter(matplotlib.ticker.StrMethodFormatter("{x:,.0f}"))
             ax.set_ylabel("転送速度 (bps)")
 
-        ax.set_title(f"{switch}: {filename.replace('.csv', '')}  {desc}", fontsize=11, loc="left")
-        ax.set_title(desc, fontsize=11, loc="right")
+        ax.set_title(f"{switch}: {filename.replace('.csv', '')} ", fontsize=11, loc="left")
+        ax.set_title(desc, fontsize=10, loc="right", color="#000000", )
         ax.set_xlabel(x_label_text)
     except Exception as e:
         traceback.print_exc()
