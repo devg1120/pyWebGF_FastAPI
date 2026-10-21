@@ -48,6 +48,7 @@ BASE_DIR = "./gen_csv/month_data_build/test"
 #if os.uname()[1] == "mokka21":
 if gethostname() == "mokka21":
    BASE_DIR = "/sclog/tmp/_snmp/data"
+   pass
 
 
 print("BASE_DIR:", BASE_DIR)
@@ -132,7 +133,7 @@ from fastapi.concurrency import run_in_threadpool
 async def plot_graph(
     mode: str = "single", yyyymm: Optional[str] = None, dd: Optional[str] = None,
     switch: Optional[str] = None, filename: Optional[str] = None, cols: int = 2,
-    start_hour: int = 8, end_hour: int = 18, desc: str = "", start_dd: str = "", end_dd: str = "",
+    start_hour: int = 8, end_hour: int = 18, desc: str = "", start_dd: str = "", end_dd: str = "", 
 ):
     fig_size = (14, 4.0) if cols == 1 else (6, 2.8) if cols == 4 else (8, 3.0)
     fig = Figure(figsize=fig_size)
@@ -173,6 +174,7 @@ async def plot_graph(
 
         if len(df.columns) >= 6:
             df.columns = ["日時", "INDEX", "NAME", "STATUS", "項目A", "項目B"] + list(df.columns[6:])
+            #df.columns = ["日時", "INDEX",  "NAME", "DESC", "STATUS", "項目A", "項目B"] + list(df.columns[6:])
         elif len(df.columns) >= 3:
             df.columns = ["日時", "項目A", "項目B"] + list(df.columns[3:])
 
@@ -213,7 +215,7 @@ async def plot_graph(
             ax.get_yaxis().set_major_formatter(matplotlib.ticker.StrMethodFormatter("{x:,.0f}"))
             ax.set_ylabel("転送速度 (bps)")
 
-        ax.set_title(f"{switch}: {filename.replace('.csv', '')}", fontsize=11, loc="left")
+        ax.set_title(f"{switch}: {filename.replace('.csv', '')}  {desc}", fontsize=11, loc="left")
         ax.set_title(desc, fontsize=11, loc="right")
         ax.set_xlabel(x_label_text)
     except Exception as e:

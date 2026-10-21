@@ -215,31 +215,9 @@
     {% endif %}
 </form>
 
-<!--
-                            <form method="POST" action="/dashboard/add" style="margin: 0;">
-                                <input type="hidden" name="yyyymm" value="{{ selected_yyyymm }}">
-                                <input type="hidden" name="dd" value="{{ selected_dd }}">
-                                <input type="hidden" name="switch" value="{{ selected_switch }}">
-                                <input type="hidden" name="filename" value="{{ filename }}">
-                                <input type="hidden" name="desc" value="{{ ns.desc }}">
-                                
-                                {% if ns.is_registered %}
-                                <button type="button" class="btn-reg" style="background-color: #ccc; border: 1px solid #aaa;" disabled>登録中</button>
-                                {% else %}
-                                <button type="submit" class="btn-reg" style="background-color: #e1f5fe; border: 1px solid #b3e5fc; color: #0288d1;">＋ ダッシュボード登録</button>
-                                {% endif %}
-                            </form>
--->
                         </div>
- <!--                       
-                        <img class="graph-img" 
-                             src="/plot?mode={{ current_mode }}&yyyymm={{ selected_yyyymm }}&dd={{ selected_dd }}&start_dd={{ selected_start_dd }}&end_dd={{ selected_end_dd }}&switch={{ selected_switch }}&filename={{ filename }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}&desc={{ ns.desc }}" 
-                             alt="読み込み中..." 
-                             loading="lazy">
- -->
-<!-- 💡 横幅と高さの比率を事前に固定し、読み込み中のガタつきを完全に抑止 -->
 <img class="graph-img" 
-     src="/plot?mode={{ current_mode }}&yyyymm={{ selected_yyyymm }}&dd={{ selected_dd }}&start_dd={{ selected_start_dd }}&end_dd={{ selected_end_dd }}&switch={{ selected_switch }}&filename={{ filename }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}&desc={{ ns.desc }}" 
+     src="/plot?mode={{ current_mode }}&yyyymm={{ selected_yyyymm }}&dd={{ selected_dd }}&start_dd={{ selected_start_dd }}&end_dd={{ selected_end_dd }}&switch={{ selected_switch }}&filename={{ filename }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}&desc={{ns.desc }}" 
      alt="読み込み中..." 
      loading="lazy"
      width="800"

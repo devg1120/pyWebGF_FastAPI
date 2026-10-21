@@ -16,4 +16,5 @@ pip install "salesforce-merlion[anomaly]"
 
 
 
+python3.10 main.py
 
