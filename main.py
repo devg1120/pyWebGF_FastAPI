@@ -243,6 +243,26 @@ async def plot_graph(
             label.set_horizontalalignment("right")
 
         max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
+        if max_val >= 2_000_000_000:
+           MAX_BPS = 10_000_000_000
+           ax.set_ylim(0, MAX_BPS)
+           ax.set_ylabel("転送速度 (Gbps)")
+           ax.tick_params(axis='y', colors="red")
+
+        elif max_val >= 1_000_000_000:
+           MAX_BPS = 2_000_000_000
+           ax.set_ylim(0, MAX_BPS)
+           ax.set_ylabel("転送速度 (Gbps)")
+           ax.tick_params(axis='y', colors="red")
+        else:
+           MAX_BPS = 1_000_000_000
+           ax.set_ylim(0, MAX_BPS)
+           ax.set_ylabel("転送速度 (Gbps)")
+
+        ax.get_yaxis().get_offset_text().set_visible(False)
+
+        """
+        max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
         if max_val >= 1_000_000:
             ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000:,.1f} M"))
             ax.set_ylabel("転送速度 (Mbps)")
@@ -256,6 +276,9 @@ async def plot_graph(
         ax.set_title(f"{switch}: {filename.replace('.csv', '')} ", fontsize=11, loc="left")
         ax.set_title(desc, fontsize=10, loc="right", color="#000000", )
         ax.set_xlabel(x_label_text)
+        """
+
+
     except Exception as e:
         traceback.print_exc()
         ax.text(0.5, 0.5, f"Error: {type(e).__name__}", ha="center", va="center", color="red")
