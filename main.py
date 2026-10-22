@@ -4,6 +4,7 @@ import os
 import platform
 import json
 import traceback
+
 from typing import Optional
 import pandas as pd
 import matplotlib
@@ -13,6 +14,7 @@ import matplotlib.dates as mdates
 from natsort import natsorted
 
 # FastAPI関連
+import urllib.parse
 from fastapi import FastAPI, Request, Form, status
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -52,6 +54,9 @@ app = FastAPI()
 print("HOSTNAME:", gethostname())
 
 templates = Jinja2Templates(directory="templates")
+templates.env.filters["urldecode"] = urllib.parse.unquote
+
+
 BASE_DIR = "./gen_csv/month_data_build/test"
 
 #if os.uname()[1] == "mokka21":

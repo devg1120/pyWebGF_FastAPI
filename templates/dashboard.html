@@ -160,7 +160,7 @@
                     {% set ns_if = item.filename | replace('.csv','') %}
                     
                     <!-- 💡 idを dash-card-{{ loop.index0 }} に変更 -->
-                    <div class="graph-card" id="dash-card-{{ loop.index0 }}" data-search="{{ (item.switch ~ ' ' ~ ns_if ~ ' ' ~ item.desc) | lower }}">
+                    <div class="graph-card" id="dash-card-{{ loop.index0 }}" data-search="{{ (item.switch ~ ' ' ~ ns_if ~ ' ' ~ item.desc | urldecode) | lower }}">
                         <div class="graph-header">
                             <span style="font-weight: bold; font-size: 0.9em;">
                                 <span style="color: #0288d1;">[{{ item.switch }}]</span> # {{ ns_if }} 
@@ -175,7 +175,7 @@
                         </div>
                         
                         <img class="graph-img" 
-                             src="/plot?mode={{ current_mode }}&yyyymm={% if current_mode == 'single' %}{{ selected_yyyymm }}{% else %}{{ item.yyyymm }}{% endif %}&dd={% if current_mode == 'single' %}{{ selected_dd }}{% else %}{{ item.dd }}{% endif %}&start_dd={{ selected_start_dd }}&end_dd={{ selected_end_dd }}&switch={{ item.switch }}&filename={{ item.filename }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}&desc={{ item.desc }}" 
+                             src="/plot?mode={{ current_mode }}&yyyymm={% if current_mode == 'single' %}{{ selected_yyyymm }}{% else %}{{ item.yyyymm }}{% endif %}&dd={% if current_mode == 'single' %}{{ selected_dd }}{% else %}{{ item.dd }}{% endif %}&start_dd={{ selected_start_dd }}&end_dd={{ selected_end_dd }}&switch={{ item.switch }}&filename={{ item.filename }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}&desc={{ item.desc| urlencode }}" 
                              alt="グラフ読み込み中..." 
                              loading="lazy"
                              width="800"
