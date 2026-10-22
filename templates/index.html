@@ -188,6 +188,7 @@
                     
                     {% if ns.interface in info_dic %}
                         {% set ns.desc = info_dic[ns.interface].desc %}
+                        {% set ns.speed = info_dic[ns.interface].speed %}
                     {% endif %}
                     
                     {% for item in registry %}
@@ -198,7 +199,14 @@
 
                     <div class="graph-card" id="graph-{{ ns.interface }}" data-search="{{ ns.interface | lower }} {{ ns.desc | lower }}">
                         <div class="graph-header">
-                            <span style="font-weight: bold; font-size: 0.9em;"># {{ ns.interface }} {% if ns.desc %}<span style="color: #555; font-weight: normal; margin-left: 5px;">({{ ns.desc }})</span>{% endif %}</span>
+                            <span style="font-weight: bold; font-size: 0.9em;">{{ ns.interface }} 
+                                 {% if ns.speed %}
+                                      <span style="color: #000; font-weight: normal; margin-left: 10px;">{{ ns.speed | int // 1000 }}Gbps</span>
+                                 {% endif %}
+                                 {% if ns.desc %}
+                                      <span style="color: #555; font-weight: normal; margin-left: 20px;">{{ ns.desc }}</span>
+                                 {% endif %}
+                            </span>
                             
 <!-- 💡 onsubmitを追加して、JavaScriptで非同期送信にインターセプト（横取り）します -->
 <form method="POST" action="/dashboard/add" style="margin: 0;" onsubmit="registerDashboard(event, this)">
