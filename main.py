@@ -147,11 +147,14 @@ from fastapi.concurrency import run_in_threadpool
 async def plot_graph(
     mode: str = "single", yyyymm: Optional[str] = None, dd: Optional[str] = None,
     switch: Optional[str] = None, filename: Optional[str] = None, cols: int = 2,
-    start_hour: int = 8, end_hour: int = 18, desc: str = "", start_dd: str = "", end_dd: str = "", 
+    start_hour: int = 8, end_hour: int = 18, desc: str = "", speed: str = "", start_dd: str = "", end_dd: str = "", 
 ):
     fig_size = (14, 4.0) if cols == 1 else (6, 2.8) if cols == 4 else (8, 3.0)
     fig = Figure(figsize=fig_size)
     ax = fig.subplots()
+    g_speed = ""
+    if speed != "":
+        g_speed = str(int(speed)//1000) + "Gbps"
 
     try:
         df_list = []
@@ -238,10 +241,44 @@ async def plot_graph(
         ax.grid(True, which="both", color="#cccccc", linestyle="-", linewidth=0.5)
         ax.set_xlim(start_time, end_time)
         ax.xaxis.set_major_formatter(mdates.DateFormatter(x_tick_format))
-        for label in ax.get_xticklabels():
-            label.set_rotation(30)
-            label.set_horizontalalignment("right")
+        #for label in ax.get_xticklabels():
+        #    label.set_rotation(30)
+        #    label.set_horizontalalignment("right")
 
+        #"""
+        if True:
+        #if False:
+             max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
+             if max_val >= 2_000_000_000:
+                MAX_BPS = 10_000_000_000
+                ax.set_ylim(0, MAX_BPS)
+                ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000_000:,.1f} G"))
+                ax.set_ylabel("転送速度 (Gbps)")
+                ax.tick_params(axis='y', colors="red")
+
+             elif max_val >= 1_000_000_000:
+                MAX_BPS = 2_000_000_000
+                ax.set_ylim(0, MAX_BPS)
+                ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000_000:,.1f} G"))
+                ax.set_ylabel("転送速度 (Gbps)")
+                ax.tick_params(axis='y', colors="#0080FF")
+
+             else:
+                MAX_BPS = 1_000_000_000
+                ax.set_ylim(0, MAX_BPS)
+                ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000_000:,.1f} G"))
+                ax.set_ylabel("転送速度 (Gbps)")
+
+             ax.get_yaxis().get_offset_text().set_visible(False)
+
+             ax.set_title(f"{switch}: {filename.replace('.csv', '')}  {g_speed}", fontsize=11, loc="left")
+             ax.set_title(desc, fontsize=10, loc="right", color="#000000", )
+             ax.set_xlabel(x_label_text)
+        else:
+            pass
+
+        #"""
+        """
         max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
         if max_val >= 2_000_000_000:
            MAX_BPS = 10_000_000_000
@@ -260,6 +297,11 @@ async def plot_graph(
            ax.set_ylabel("転送速度 (Gbps)")
 
         ax.get_yaxis().get_offset_text().set_visible(False)
+        #ax.set_title(f"{switch}: {filename.replace('.csv', '')}  {g_speed}", fontsize=11, loc="left")
+        ax.set_title(f"{switch}: {filename.replace('.csv', '')}  ", fontsize=11, loc="left")
+        ax.set_title(desc, fontsize=10, loc="right", color="#000000", )
+        ax.set_xlabel(x_label_text)
+        """
 
         """
         max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
@@ -283,7 +325,8 @@ async def plot_graph(
         traceback.print_exc()
         ax.text(0.5, 0.5, f"Error: {type(e).__name__}", ha="center", va="center", color="red")
 
-    fig.legend(bbox_to_anchor=(0.13, -0.04), loc='lower left', ncol=2, frameon=True, facecolor="#ffffff", edgecolor="#cccccc")
+    #fig.legend(bbox_to_anchor=(0.13, -0.04), loc='lower left', ncol=2, frameon=True, facecolor="#ffffff", edgecolor="#cccccc")
+    fig.legend(bbox_to_anchor=(0.13, -0.09), loc='lower left', ncol=2, frameon=True, facecolor="#ffffff", edgecolor="#cccccc")
     plt.subplots_adjust(bottom=0.25)
     fig.tight_layout()
 
