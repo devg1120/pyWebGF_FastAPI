@@ -71,8 +71,10 @@
         <!-- モード切り替えタブ -->
         <div class="mode-tab">
             <a href="/?mode=single&yyyymm={{ selected_yyyymm }}&dd={{ selected_dd }}&switch={{ selected_switch }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}" {% if current_mode == 'single' %}class="active"{% endif %}>[-] single 通常モード（日を選択）</a>
-	    A
+	    <!--
             <a href="/?mode=range&yyyymm={{ selected_yyyymm }}&dd={{ selected_dd }}&switch={{ selected_switch }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}&start_dd={{ selected_start_dd or '2026-06-01' }}&end_dd={{ selected_end_dd or '2026-06-01' }}" {% if current_mode == 'range' %}class="active"{% endif %}>[-] range 期間指定モード</a>
+-->
+            <a href="/?mode=range&yyyymm={{ selected_yyyymm }}&dd={{ selected_dd }}&switch={{ selected_switch }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}&start_dd={{ selected_start_dd or yesterday }}&end_dd={{ selected_end_dd or today }}" {% if current_mode == 'range' %}class="active"{% endif %}>[-] range 期間指定モード</a>
         </div>
 
         <!-- 条件指定フォーム -->
@@ -99,11 +101,11 @@
             {% else %}
             <div class="form-group">
                 <label>開始日</label>
-                <input type="date" name="start_dd" value="{{ selected_start_dd or '2026-06-01' }}">
+                <input type="date" name="start_dd" value="{{ selected_start_dd or yesterday}}">
             </div>
             <div class="form-group">
                 <label>終了日</label>
-                <input type="date" name="end_dd" value="{{ selected_end_dd or '2026-06-01' }}">
+                <input type="date" name="end_dd" value="{{ selected_end_dd or today }}">
             </div>
             {% endif %}
             <div class="form-group">
@@ -114,6 +116,7 @@
                     {% endfor %}
                 </select>
             </div>
+            {% if current_mode == 'single' %}
             <div class="form-group">
                 <label>開始（時）</label>
                 <select name="start_hour">
@@ -130,6 +133,7 @@
                     {% endfor %}
                 </select>
             </div>
+            {% endif %}
             <div class="form-group">
                 <label>グラフ列数</label>
                 <select name="cols">

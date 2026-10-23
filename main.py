@@ -93,6 +93,8 @@ async def index(
     cols: int = 2,
     start_hour: int = 8,
     end_hour: int = 18,
+    yesterday: str = "2026-10-22",
+    today: str = "2026-10-23",
 ):
     date_tree = get_date_tree()
     if not date_tree:
@@ -137,6 +139,8 @@ async def index(
             "switches": available_switches, "selected_switch": switch, "selected_cols": cols,
             "start_hour": start_hour, "end_hour": end_hour, "csv_filenames": csv_filenames,
             "info_dic": info_dic, "registry": DASHBOARD_REGISTRY,
+            "yesterday": yesterday,
+            "today": today,
         }
     )
 
@@ -265,36 +269,6 @@ async def plot_graph(
                label.set_rotation(30)
                label.set_horizontalalignment("right")
 
-        # ─── 【復活】Y軸調整＆単位パースロジック ───
-        """
-        max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
-        
-        if max_val >= 2_000_000_000:
-            MAX_BPS = 10_000_000_000
-            ax.set_ylim(0, MAX_BPS)
-            ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000_000:,.1f} G"))
-            ax.set_ylabel("転送速度 (Gbps)")
-            ax.tick_params(axis='y', colors="red")
-
-        elif max_val >= 1_000_000_000:
-            MAX_BPS = 2_000_000_000
-            ax.set_ylim(0, MAX_BPS)
-            ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000_000:,.1f} G"))
-            ax.set_ylabel("転speed (Gbps)")
-            ax.tick_params(axis='y', colors="#0080FF")
-
-        elif max_val >= 1_000_000:
-            ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000:,.1f} M"))
-            ax.set_ylabel("転送速度 (Mbps)")
-            
-        elif max_val >= 1_000:
-            ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000:,.0f} K"))
-            ax.set_ylabel("転送速度 (Kbps)")
-            
-        else:
-            ax.get_yaxis().set_major_formatter(matplotlib.ticker.StrMethodFormatter("{x:,.0f}"))
-            ax.set_ylabel("転送速度 (bps)")
-        """
 
         if True:
              max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
