@@ -102,14 +102,16 @@ async def index(
 
     available_yyyymm = list(date_tree.keys())
     if not yyyymm or yyyymm not in date_tree:
-        yyyymm = available_yyyymm[0] if available_yyyymm else ""
+        #yyyymm = available_yyyymm[0] if available_yyyymm else ""
+        yyyymm = available_yyyymm[-1] if available_yyyymm else ""  # 💡 最新の年月を取得
 
     available_dds = date_tree.get(yyyymm, [])
     if not available_dds:
         return HTMLResponse(content=f"<h1>エラー: 有効な日がありません。</h1>", status_code=500)
 
     if not dd or dd not in available_dds:
-        dd = available_dds[0] if available_dds else ""
+        #dd = available_dds[0] if available_dds else ""
+        dd = available_dds[-1] if available_dds else ""  # 💡 最新の日を取得
 
     selected_date = f"{yyyymm}/{dd}"
     date_dir = os.path.join(BASE_DIR, selected_date)
@@ -335,10 +337,13 @@ async def dashboard(
     date_tree = get_date_tree()
     available_yyyymm = list(date_tree.keys())
     if not yyyymm or yyyymm not in date_tree:
-        yyyymm = available_yyyymm[0] if available_yyyymm else ""
+        #yyyymm = available_yyyymm[0] if available_yyyymm else ""
+        yyyymm = available_yyyymm[-1] if available_yyyymm else "" 
+
     available_dds = date_tree.get(yyyymm, [])
     if not dd or dd not in available_dds:
-        dd = available_dds[0] if available_dds else ""
+        #dd = available_dds[0] if available_dds else ""
+        dd = available_dds[-1] if available_dds else ""  
 
     return templates.TemplateResponse(
         request=request,
