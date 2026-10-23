@@ -1,5 +1,4 @@
 *.swp
-/gen_csv/month_data_build/test/
 
 __pycache__
 
