@@ -143,6 +143,7 @@ async def index(
 # ※もし上部のインポートになければ、関数の外か中にこれを追加してください
 from fastapi.concurrency import run_in_threadpool
 
+
 @app.get("/plot")
 async def plot_graph(
     mode: str = "single", yyyymm: Optional[str] = None, dd: Optional[str] = None,
@@ -152,36 +153,70 @@ async def plot_graph(
     fig_size = (14, 4.0) if cols == 1 else (6, 2.8) if cols == 4 else (8, 3.0)
     fig = Figure(figsize=fig_size)
     ax = fig.subplots()
+    
+    # ─── 【復活】speed表示の整形ロジック ───
     g_speed = ""
     if speed != "":
         g_speed = str(int(speed)//1000) + "Gbps"
 
     try:
         df_list = []
+        
+        # ─── 期間指定モード (range) ───
         if mode == "range" and start_dd and end_dd:
-            dr = pd.date_range(start=start_dd, end=end_dd)
+            start_date_obj = pd.to_datetime(start_dd.replace("/", "-"))
+            end_date_obj = pd.to_datetime(end_dd.replace("/", "-"))
+            dr = pd.date_range(start=start_date_obj, end=end_date_obj)
+            
             for d in dr:
-                file_path = os.path.join(BASE_DIR, d.strftime("%Y%m"), d.strftime("%d"), switch, filename)
-                if os.path.exists(file_path):
-                    # 💡 【非同期化】スレッドプールでPandasのCSV読み込みを実行
+                ym_dir = d.strftime("%Y%m")
+                d_single = str(d.day)        
+                d_double = d.strftime("%d")  
+                
+                candidate_paths = [
+                    os.path.join(BASE_DIR, ym_dir, d_double, switch, filename),
+                    os.path.join(BASE_DIR, ym_dir, d_single, switch, filename),
+                    os.path.join(BASE_DIR, ym_dir, d_double, switch.upper(), filename),
+                    os.path.join(BASE_DIR, ym_dir, d_single, switch.upper(), filename),
+                ]
+                
+                file_path = None
+                for c_path in candidate_paths:
+                    if os.path.exists(c_path):
+                        file_path = c_path
+                        break
+                
+                if file_path:
                     _df = await run_in_threadpool(pd.read_csv, file_path, engine="c")
                     if not _df.empty:
+                        if len(_df.columns) >= 6:
+                            _df.columns = ["日時", "INDEX", "NAME", "STATUS", "項目A", "項目B"] + list(_df.columns[6:])
+                        elif len(_df.columns) >= 3:
+                            _df.columns = ["日時", "項目A", "項目B"] + list(_df.columns[3:])
                         df_list.append(_df)
+
             if df_list:
                 df = pd.concat(df_list, ignore_index=True)
             else:
                 raise FileNotFoundError("データファイルが見つかりません。")
-            start_time = pd.to_datetime(start_dd) + pd.Timedelta(hours=start_hour)
-            end_time = pd.to_datetime(end_dd) + pd.Timedelta(hours=end_hour, minutes=55)
-            x_label_text = f"{start_dd} ～ {end_dd}"
+
+            start_time = start_date_obj + pd.Timedelta(hours=start_hour)
+            end_time = end_date_obj + pd.Timedelta(hours=end_hour, minutes=55)
+            x_label_text = f"{start_date_obj.strftime('%Y-%m-%d')} ～ {end_date_obj.strftime('%Y-%m-%d')}"
             x_tick_format = "%m/%d %H:%M"
+
+        # ─── 通常単日モード (single) ───
         else:
             file_path = os.path.join(BASE_DIR, yyyymm, dd, switch, filename)
             if not os.path.exists(file_path):
                 raise FileNotFoundError(f"ファイルなし: {yyyymm}/{dd}")
 
-            # 💡 【非同期化】スレッドプールでPandasのCSV読み込みを実行
             df = await run_in_threadpool(pd.read_csv, file_path, engine="c")
+            
+            if len(df.columns) >= 6:
+                df.columns = ["日時", "INDEX", "NAME", "STATUS", "項目A", "項目B"] + list(df.columns[6:])
+            elif len(df.columns) >= 3:
+                df.columns = ["日時", "項目A", "項目B"] + list(df.columns[3:])
 
             base_date = pd.to_datetime(f"{yyyymm[:4]}-{yyyymm[4:]}-{dd}").normalize()
             start_time = base_date + pd.Timedelta(hours=start_hour)
@@ -189,47 +224,31 @@ async def plot_graph(
             x_label_text = f"{yyyymm[:4]}-{yyyymm[4:6]}-{dd}"
             x_tick_format = "%H:%M"
 
-        if len(df.columns) >= 6:
-            df.columns = ["日時", "INDEX", "NAME", "STATUS", "項目A", "項目B"] + list(df.columns[6:])
-            #df.columns = ["日時", "INDEX",  "NAME", "DESC", "STATUS", "項目A", "項目B"] + list(df.columns[6:])
-        elif len(df.columns) >= 3:
-            df.columns = ["日時", "項目A", "項目B"] + list(df.columns[3:])
-
-        #df["日時"] = pd.to_datetime(df["日時"], format="mixed", errors='coerce')
-        #df = df.dropna(subset=["日時"]).sort_values("日時").reset_index(drop=True)
-        #df["差分A"] = df["項目A"].diff().clip(lower=0)
-        #df["差分B"] = df["項目B"].diff().clip(lower=0) if "項目B" in df.columns else 0
-        #df["bps_A"] = (df["差分A"] * 8) / 300
-        #df["bps_B"] = (df["差分B"] * 8) / 300
-
+        # ─── データ整形・ソート ───
         df["日時"] = pd.to_datetime(df["日時"], format="mixed", errors='coerce')
         df = df.dropna(subset=["日時"]).sort_values("日時").reset_index(drop=True)
 
-        # ─── ✨【追加】欠損によるグラフの跳ね返り防止ガード ───
-        # 前の行との時間差（秒）を計算します
+        # ─── ギャップ・日またぎガード ───
         time_diff_sec = df["日時"].diff().dt.total_seconds()
-        # 5分（300秒）を大幅に超える（許容誤差を含めて330秒以上）場合は欠損とみなすフラグ
-        is_missing = time_diff_sec > 330
-        # ─────────────────────────────────────────────────────
+        is_missing = (time_diff_sec > 330) | (time_diff_sec < 0)
 
-        # 🚨 修正：時間空きがある場合は diff() を計算せず NaN にする
         df["差分A"] = df["項目A"].diff().clip(lower=0)
-        df.loc[is_missing, "差分A"] = None  # 時間が空いた箇所のデータを無効化
-
+        df.loc[is_missing, "差分A"] = None  
         df["bps_A"] = (df["差分A"] * 8) / 300
 
         if "項目B" in df.columns:
             df["差分B"] = df["項目B"].diff().clip(lower=0)
-            df.loc[is_missing, "差分B"] = None  # 時間が空いた箇所のデータを無効化
+            df.loc[is_missing, "差分B"] = None
             df["bps_B"] = (df["差分B"] * 8) / 300
         else:
             df["bps_B"] = 0
 
-
         df_filtered = df[(df["日時"] >= start_time) & (df["日時"] <= end_time)]
+        
         fig.set_facecolor("#f0f0f0")
         ax.set_facecolor("#ffffff")
 
+        # ─── 描画 ───
         if not df_filtered.empty:
             ax.fill_between(df_filtered["日時"], df_filtered["bps_A"], color="#00eb0c", alpha=0.9, label="In (bps)")
             ax.plot(df_filtered["日時"], df_filtered["bps_A"], color="#006600", linewidth=0.8)
@@ -241,13 +260,43 @@ async def plot_graph(
         ax.grid(True, which="both", color="#cccccc", linestyle="-", linewidth=0.5)
         ax.set_xlim(start_time, end_time)
         ax.xaxis.set_major_formatter(mdates.DateFormatter(x_tick_format))
-        #for label in ax.get_xticklabels():
-        #    label.set_rotation(30)
-        #    label.set_horizontalalignment("right")
+        if mode == "range":
+           for label in ax.get_xticklabels():
+               label.set_rotation(30)
+               label.set_horizontalalignment("right")
 
-        #"""
+        # ─── 【復活】Y軸調整＆単位パースロジック ───
+        """
+        max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
+        
+        if max_val >= 2_000_000_000:
+            MAX_BPS = 10_000_000_000
+            ax.set_ylim(0, MAX_BPS)
+            ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000_000:,.1f} G"))
+            ax.set_ylabel("転送速度 (Gbps)")
+            ax.tick_params(axis='y', colors="red")
+
+        elif max_val >= 1_000_000_000:
+            MAX_BPS = 2_000_000_000
+            ax.set_ylim(0, MAX_BPS)
+            ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000_000:,.1f} G"))
+            ax.set_ylabel("転speed (Gbps)")
+            ax.tick_params(axis='y', colors="#0080FF")
+
+        elif max_val >= 1_000_000:
+            ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000:,.1f} M"))
+            ax.set_ylabel("転送速度 (Mbps)")
+            
+        elif max_val >= 1_000:
+            ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000:,.0f} K"))
+            ax.set_ylabel("転送速度 (Kbps)")
+            
+        else:
+            ax.get_yaxis().set_major_formatter(matplotlib.ticker.StrMethodFormatter("{x:,.0f}"))
+            ax.set_ylabel("転送速度 (bps)")
+        """
+
         if True:
-        #if False:
              max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
              if max_val >= 2_000_000_000:
                 MAX_BPS = 10_000_000_000
@@ -269,69 +318,35 @@ async def plot_graph(
                 ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000_000:,.1f} G"))
                 ax.set_ylabel("転送速度 (Gbps)")
 
-             ax.get_yaxis().get_offset_text().set_visible(False)
-
-             ax.set_title(f"{switch}: {filename.replace('.csv', '')}  {g_speed}", fontsize=11, loc="left")
-             ax.set_title(desc, fontsize=10, loc="right", color="#000000", )
-             ax.set_xlabel(x_label_text)
         else:
-            pass
+             max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
+             if max_val >= 1_000_000:
+                 ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000:,.1f} M"))
+                 ax.set_ylabel("転送速度 (Mbps)")
+             elif max_val >= 1_000:
+                 ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000:,.0f} K"))
+                 ax.set_ylabel("転送速度 (Kbps)")
+             else:
+                 ax.get_yaxis().set_major_formatter(matplotlib.ticker.StrMethodFormatter("{x:,.0f}"))
+                 ax.set_ylabel("転送速度 (bps)")
 
-        #"""
-        """
-        max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
-        if max_val >= 2_000_000_000:
-           MAX_BPS = 10_000_000_000
-           ax.set_ylim(0, MAX_BPS)
-           ax.set_ylabel("転送速度 (Gbps)")
-           ax.tick_params(axis='y', colors="red")
-
-        elif max_val >= 1_000_000_000:
-           MAX_BPS = 2_000_000_000
-           ax.set_ylim(0, MAX_BPS)
-           ax.set_ylabel("転送速度 (Gbps)")
-           ax.tick_params(axis='y', colors="red")
-        else:
-           MAX_BPS = 1_000_000_000
-           ax.set_ylim(0, MAX_BPS)
-           ax.set_ylabel("転送速度 (Gbps)")
 
         ax.get_yaxis().get_offset_text().set_visible(False)
-        #ax.set_title(f"{switch}: {filename.replace('.csv', '')}  {g_speed}", fontsize=11, loc="left")
-        ax.set_title(f"{switch}: {filename.replace('.csv', '')}  ", fontsize=11, loc="left")
-        ax.set_title(desc, fontsize=10, loc="right", color="#000000", )
+
+        # ─── 【復活】desc表（左右のタイトル表示） ───
+        ax.set_title(f"{switch}: {filename.replace('.csv', '')}  {g_speed}", fontsize=11, loc="left")
+        ax.set_title(desc, fontsize=10, loc="right", color="#000000")
         ax.set_xlabel(x_label_text)
-        """
-
-        """
-        max_val = max(df_filtered["bps_A"].max(), df_filtered["bps_B"].max()) if not df_filtered.empty else 0
-        if max_val >= 1_000_000:
-            ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000_000:,.1f} M"))
-            ax.set_ylabel("転送速度 (Mbps)")
-        elif max_val >= 1_000:
-            ax.get_yaxis().set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, p: f"{x / 1_000:,.0f} K"))
-            ax.set_ylabel("転送速度 (Kbps)")
-        else:
-            ax.get_yaxis().set_major_formatter(matplotlib.ticker.StrMethodFormatter("{x:,.0f}"))
-            ax.set_ylabel("転送速度 (bps)")
-
-        ax.set_title(f"{switch}: {filename.replace('.csv', '')} ", fontsize=11, loc="left")
-        ax.set_title(desc, fontsize=10, loc="right", color="#000000", )
-        ax.set_xlabel(x_label_text)
-        """
-
 
     except Exception as e:
         traceback.print_exc()
         ax.text(0.5, 0.5, f"Error: {type(e).__name__}", ha="center", va="center", color="red")
 
-    #fig.legend(bbox_to_anchor=(0.13, -0.04), loc='lower left', ncol=2, frameon=True, facecolor="#ffffff", edgecolor="#cccccc")
     fig.legend(bbox_to_anchor=(0.13, -0.09), loc='lower left', ncol=2, frameon=True, facecolor="#ffffff", edgecolor="#cccccc")
     plt.subplots_adjust(bottom=0.25)
     fig.tight_layout()
 
     img = io.BytesIO()
-    # 💡 【参考】画像保存（fig.savefig）もスレッドプールに逃がすことでさらに安定します
     await run_in_threadpool(fig.savefig, img, format="png", bbox_inches="tight", dpi=120)
     img.seek(0)
     fig.clear()
