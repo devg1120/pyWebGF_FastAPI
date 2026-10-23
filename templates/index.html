@@ -82,21 +82,26 @@
             <input type="hidden" name="mode" value="{{ current_mode }}">
             <!-- ...（中身のフォームグループは既存のままで変更なし）... -->
             {% if current_mode == 'single' %}
+
             <div class="form-group">
                 <label>対象月</label>
-                <select name="yyyymm" onchange="this.form.submit()">
-                    {% for yyyymm in date_tree.keys() %}
-                    <option value="{{ yyyymm }}" {% if yyyymm == selected_yyyymm %}selected{% endif %}>{{ yyyymm[:4] }}年{{ yyyymm[4:] }}月</option>
-                    {% endfor %}
-                </select>
+  <select id="select_yyyymm" name="yyyymm">
+    {% for yyyymm in date_tree.keys() %}
+      <option value="{{ yyyymm }}" {% if yyyymm == selected_yyyymm %}selected{% endif %}>
+        {{ yyyymm[:4] }}年{{ yyyymm[4:] }}月
+      </option>
+    {% endfor %}
+  </select>
             </div>
             <div class="form-group">
                 <label>対象日</label>
-                <select name="dd" onchange="this.form.submit()">
-                    {% for dd in available_dds %}
-                    <option value="{{ dd }}" {% if dd == selected_dd %}selected{% endif %}>{{ dd }}日</option>
-                    {% endfor %}
-                </select>
+  <select id="select_dd" name="dd">
+    {% for dd in available_dds %}
+      <option value="{{ dd }}" {% if dd == selected_dd %}selected{% endif %}>
+        {{ dd }}日
+      </option>
+    {% endfor %}
+  </select>
             </div>
             {% else %}
             <div class="form-group">
@@ -143,7 +148,9 @@
                 </select>
             </div>
             <div class="form-group" style="padding-top: 18px;">
-                <button type="submit" class="btn-submit">{% if current_mode == 'single' %}条件を更新{% else %}グラフを表示・更新{% endif %}</button>
+<button type="button" id="btn_update_submit">
+  {% if current_mode == 'single' %}条件を更新{% else %}グラフを表示・更新{% endif %}
+</button>
             </div>
         </form>
 
@@ -228,7 +235,12 @@
 </form>
 
                         </div>
-<img class="graph-img" 
+<img class="graph-img monitor-chart" 
+             data-switch="{{ selected_switch }}" 
+             data-filename="{{ filename }}" 
+             data-desc="{{ ns.desc }}"
+
+
      src="/plot?mode={{ current_mode }}&yyyymm={{ selected_yyyymm }}&dd={{ selected_dd }}&start_dd={{ selected_start_dd }}&end_dd={{ selected_end_dd }}&switch={{ selected_switch }}&filename={{ filename }}&cols={{ selected_cols }}&start_hour={{ start_hour }}&end_hour={{ end_hour }}&desc={{ ns.desc | urlencode }}&speed={{ ns.speed}}" 
      alt="読み込み中..." 
      loading="lazy"
@@ -346,6 +358,96 @@
             });
         }
     </script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // 💡 画面をトップにスクロールさせず、中身だけを非同期で部分更新する関数
+    async function refreshPageContainer(event) {
+        if (event) {
+            event.preventDefault(); // フォーム送信による画面リロード（トップ移動）を完全に阻止
+            event.stopPropagation();
+        }
+
+        // 1. 現在のスクロール位置（一番上からのピクセル数）を正確に記憶
+        const currentScrollY = window.scrollY || window.pageYOffset;
+
+        // 2. 現在選択されているフォームの入力値（日付やスイッチなど）をすべて集計
+        const form = document.querySelector('form') || document.getElementById('select_yyyymm')?.form;
+        if (!form) return;
+
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        for (const [key, value] of formData.entries()) {
+            params.append(key, value);
+        }
+
+        // 現在のモード（singleなど）も安全に付与
+        if (!params.has('mode')) {
+            params.append('mode', "{{ current_mode }}");
+        }
+
+        try {
+            // 3. バックエンド（FastAPI）に対して、裏側で静かに新しい日付のデータをリクエスト
+            const targetUrl = `/?${params.toString()}`;
+            const response = await fetch(targetUrl);
+            if (!response.ok) throw new Error('ネットワークエラーが発生しました');
+            
+            const htmlText = await response.text();
+
+            // 4. 取得した新しいHTMLから、コンテンツ部分だけを抽出して現在の画面に上書き
+            const parser = new DOMParser();
+            const newDoc = parser.parseFromString(htmlText, 'text/html');
+            
+            // 画面全体を囲む適切な要素（なければ body 内）を差し替えます
+            // ここでは最も安全に body の中身を丸ごとスムーズに入れ替えます
+            document.body.innerHTML = newDoc.body.innerHTML;
+
+            // 5. 💡 【最重要】要素が置き換わった瞬間に、記憶していたスクロール位置へ強制固定
+            window.scrollTo(0, currentScrollY);
+            
+            // ブラウザのレンダリングラグ対策として複数回固定をかける
+            requestAnimationFrame(() => {
+                window.scrollTo(0, currentScrollY);
+            });
+            
+            // 6. 差し替えた後の新しい要素に対しても、再度このJavaScriptイベントを紐付け直す（再帰）
+            rebindEvents();
+
+        } catch (error) {
+            console.error("[エラー] グラフの非同期更新に失敗しました:", error);
+            // 万が一エラーが起きた場合は、通常の画面リロードに安全にフォールバック
+            form.submit();
+        }
+    }
+
+    // 各イベントに割当を行う補助関数
+    function rebindEvents() {
+        const monthSelect = document.querySelector('select[name="yyyymm"]');
+        const daySelect = document.querySelector('select[name="dd"]');
+        const updateBtn = document.getElementById('btn_update_submit') || document.querySelector('button[type="submit"]');
+
+        // 既存のオンチェンジイベントによるリロードを無効化し、部分更新関数をセット
+        if (monthSelect) {
+            monthSelect.onchange = null;
+            monthSelect.addEventListener('change', refreshPageContainer);
+        }
+        if (daySelect) {
+            daySelect.onchange = null;
+            daySelect.addEventListener('change', refreshPageContainer);
+        }
+        if (updateBtn) {
+            updateBtn.addEventListener('click', refreshPageContainer);
+        }
+    }
+
+    // 初回起動時のバインド実行
+    rebindEvents();
+});
+</script>
+
+
 
 </body>
 </html>
